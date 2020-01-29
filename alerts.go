@@ -1,120 +1,345 @@
 package go4th
 
 import (
-	"encoding/json"
 	"fmt"
-	"time"
+
+	"gopkg.in/oleiade/reflections.v1"
 )
 
+// Alert is the data model for an alert.
 type Alert struct {
-	ID           string      `json:"_id,omitempty"`
-	Typ          string      `json:"_type,omitempty"`
-	Title        string      `json:"title"`
-	Description  string      `json:"description"`
-	Severity     Severity    `json:"severity"`
-	Date         time.Time   `json:"date"`
-	Tags         []string    `json:"tags"`
-	TLP          TLP         `json:"tlp"`
-	Status       AlertStatus `json:"status"`
-	Type         string      `json:"type"`
-	Source       string      `json:"source"`
-	SourceRef    string      `json:"sourceRef"`
-	Artifacts    interface{} `json:"artifacts"`
-	Follow       bool        `json:"follow"`
+	ID           string      `json:"id,omitempty"`
+	Title        string      `json:"title,omitempty"`
+	Description  string      `json:"description,omitempty"`
+	Severity     Severity    `json:"severity,omitempty"`
+	Date         int64       `json:"date,omitempty"`
+	Tags         []string    `json:"tags,omitempty"`
+	TLP          TLP         `json:"tlp,omitempty"`
+	Status       AlertStatus `json:"status,omitempty"`
+	Type         string      `json:"type,omitempty"`
+	Source       string      `json:"source,omitempty"`
+	SourceRef    string      `json:"sourceRef,omitempty"`
+	Artifacts    []*Artifact `json:"artifacts,omitempty"`
+	Follow       bool        `json:"follow,omitempty"`
 	CaseTemplate string      `json:"caseTemplate,omitempty"`
-	LastSyncDate time.Time   `json:"lastSyncDate,omitempty"`
+	LastSyncDate int64       `json:"lastSyncDate,omitempty"`
 	Case         string      `json:"case,omitempty"`
-
-	CreatedBy string    `json:"createdBy"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedBy string    `json:"updatedBy"`
-	UpadtedAt time.Time `json:"upadtedAt"`
-	User      string    `json:"user,omitempty"`
+	CreatedBy    string      `json:"createdBy,omitempty"`
+	CreatedAt    int64       `json:"createdAt,omitempty"`
+	UpdatedBy    string      `json:"updatedBy,omitempty"`
+	UpdatedAt    int64       `json:"updatedAt,omitempty"`
+	User         string      `json:"user,omitempty"`
 }
 
+// NewAlert generates an empty alert with the required fields filled with its defaults
 func NewAlert() *Alert {
 	var alert *Alert
 	alert = new(Alert)
 	alert.Severity = Medium
-	alert.Date = time.Now()
 	alert.TLP = Amber
 	alert.Status = New
 	alert.Follow = true
 	return alert
 }
 
+var updateKeysAlert = []string{"TLP", "Severity", "Tags",
+	"CaseTemplate", "Title", "Description"}
+
+// Fields that are read-only
+var keysAlert = []string{"Date", "Status", "Follow", "LastSyncDate",
+	"Case", "CreatedBy", "CreatedAt", "UpdatedBy", "User", "ID"}
+
 /*
 	Alert methods
 */
 
-func (a *Alert) SetType(t string) {
+// SetTitle sets alert's title. Title couldn't be an empty string, otherwise an error will be returned
+func (a *Alert) SetTitle(t string) error {
+	if t != "" {
+		a.Title = t
+		return nil
+	}
+	return fmt.Errorf("title could not be empty")
+}
+
+// SetDescription sets alert's description. Description couldn't be an empty string,
+// otherwise an error will be returned
+func (a *Alert) SetDescription(d string) error {
+	if d != "" {
+		a.Description = d
+		return nil
+	}
+	return fmt.Errorf("description could not be empty")
+}
+
+// SetSeverity sets alert's severity.
+func (a *Alert) SetSeverity(severity Severity) error {
+	a.Severity = severity
+	return nil
+}
+
+// SetTags sets alert's tags list. Tags couldn't be empty slice, otherwise an error will
+// be returned
+func (a *Alert) SetTags(tags []string) error {
+	if len(tags) == 0 {
+		return fmt.Errorf("tags could not be empty")
+	}
+	a.Tags = tags
+	return nil
+}
+
+// SetTLP sets alert's TLP.
+func (a *Alert) SetTLP(tlp TLP) error {
+	a.TLP = tlp
+	return nil
+}
+
+// SetStatus sets alert's status.
+func (a *Alert) SetStatus(status AlertStatus) error {
+	a.Status = status
+	return nil
+}
+
+// SetType sets alert's type. Type couldn't be an empty string, otherwise an error will be returned
+func (a *Alert) SetType(t string) error {
 	if t != "" {
 		a.Type = t
+		return nil
 	}
+	return fmt.Errorf("type could not be empty")
 }
 
-func (a *Alert) SetSource(src string) {
-	if src != "" {
-		a.Source = src
+// SetSource sets alert's source. Source couldn't be an empty string, otherwise an error will be returned
+func (a *Alert) SetSource(s string) error {
+	if s != "" {
+		a.Source = s
+		return nil
 	}
+	return fmt.Errorf("source could not be empty")
 }
 
-func (a *Alert) SetSourceRef(src string) {
-	if src != "" {
-		a.SourceRef = src
+// SetSourceRef sets alert's sourceRef. SourceRef couldn't be an empty string,
+// otherwise an error will be returned
+func (a *Alert) SetSourceRef(sr string) error {
+	if sr != "" {
+		a.SourceRef = sr
+		return nil
 	}
+	return fmt.Errorf("sourceRef could not be empty")
+}
+
+// AddArtifact adds an artifact to the alert
+func (a *Alert) AddArtifact(art *Artifact) {
+	a.Artifacts = append(a.Artifacts, art)
+}
+
+// SetArtifacts sets alert's artifacts. Artifacts couldn't be an empty list. Otherwise an
+// error will be returned
+func (a *Alert) SetArtifacts(artifacts []*Artifact) error {
+	if len(artifacts) == 0 {
+		return fmt.Errorf("artifacts could not be empty")
+	}
+	a.Artifacts = artifacts
+	return nil
+}
+
+// SetFollow sets alert's follow value.
+func (a *Alert) SetFollow(follow bool) error {
+	a.Follow = follow
+	return nil
+}
+
+// SetCaseTemplate sets alert's case template.
+func (a *Alert) SetCaseTemplate(casetpl string) error {
+	if casetpl == "" {
+		return fmt.Errorf("case template could not be empty")
+	}
+	a.CaseTemplate = casetpl
+	return nil
 }
 
 /*
 	API Calls
 */
 
+// GetAlert gets an specific alert. The alert ID must be provided in terms to get the alert.
+// If there is an error, an empty Alert will be returned, otherwise the alert is returned with
+// nil error.
+func (api *API) GetAlert(id string) (Alert, error) {
+	if id == "" {
+		return Alert{}, fmt.Errorf("id must be provided")
+	}
+
+	path := "/api/alert/" + id
+	req, err := api.newRequest("GET", path, nil)
+	if err != nil {
+		return Alert{}, err
+	}
+
+	return api.readResponseAsAlert(req)
+}
+
+// GetAlerts gets the whole list of alerts. GetAlerts returns a list of Alert or an empty
+// list. It can also return an error.
 func (api *API) GetAlerts() ([]Alert, error) {
 	path := "/api/alert"
 	req, err := api.newRequest("GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
-	var alerts []Alert
-	var buff []byte
-	_, buff, err = api.do(req)
 
-	err = json.Unmarshal(buff, &alerts)
-	return alerts, err
+	return api.readResponseAsAlerts(req)
 }
 
-func (api *API) GetAlert(id string) (Alert, error) {
-	if id != "" {
-		return Alert{}, fmt.Errorf("id must be provided")
-	}
-
-	path := "/api/alert/" + id
-	req, err := api.newRequest("GET", path, nil)
+// CreateAlert creates an alert. An alert must be provided as parameter it also needs to have
+// the required fields filled. Returns the same alert with ID number and same extra information.
+// If any error is produced while creating the alert, that error will be returned.
+func (api *API) CreateAlert(alert *Alert) (Alert, error) {
+	path := "/api/alert"
+	req, err := api.newRequest("POST", path, alert)
 	if err != nil {
 		return Alert{}, err
 	}
-	var alert Alert
-	var buff []byte
-	_, buff, err = api.do(req)
 
-	err = json.Unmarshal(buff, &alert)
-	return alert, err
+	return api.readResponseAsAlert(req)
 }
 
-func (api *API) SearchAlert(id string) (Alert, error) {
-	if id != "" {
+// UpdateAlert updates the alert information. The alert ID must me provided as well as
+// a map of fields:values that are going to be updated. The fileds couldn't be the ones
+// that are readonly and they must be defined in the Alert type. The alert with its fields
+// updated is returned, or an empty alert with an error will do it instead
+func (api *API) UpdateAlert(id string, values map[string]interface{}) (Alert, error) {
+	if id == "" {
 		return Alert{}, fmt.Errorf("id must be provided")
 	}
 
+	newAlert := NewAlert()
+	for field, value := range values {
+		if in(field, updateKeysAlert) || !in(field, keysAlert) {
+			reflections.SetField(newAlert, field, value)
+		}
+	}
+
 	path := "/api/alert/" + id
-	req, err := api.newRequest("GET", path, nil)
+	req, err := api.newRequest("PATCH", path, newAlert)
 	if err != nil {
 		return Alert{}, err
 	}
-	var alert Alert
-	var buff []byte
-	_, buff, err = api.do(req)
 
-	err = json.Unmarshal(buff, &alert)
-	return alert, err
+	return api.readResponseAsAlert(req)
+}
+
+// DeleteAlert deletes and alert. The alert ID must be provided. If ID is empty string, an error
+// will be returned, otherwise if everything goes well, no error will be returned.
+func (api *API) DeleteAlert(id string) error {
+	if id == "" {
+		return fmt.Errorf("id must be provided")
+	}
+	path := "/api/alert/" + id
+	req, err := api.newRequest("DELETE", path, nil)
+	if err != nil {
+		return err
+	}
+	_, _, err = api.do(req)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// ReadAlert marks an alert as read. The alert ID must be provied and the modified alert is returned.
+// If alert ID is empty or there is any other, it is returned.
+func (api *API) ReadAlert(id string) (Alert, error) {
+	if id == "" {
+		return Alert{}, fmt.Errorf("id must be provided")
+	}
+	path := "/api/alert/" + id + "/markAsRead"
+	req, err := api.newRequest("POST", path, nil)
+	if err != nil {
+		return Alert{}, err
+	}
+	return api.readResponseAsAlert(req)
+}
+
+// UnreadAlert marks an alert as unread. The alert ID must be provied and the modified alert is returned.
+// If alert ID is empty or there is any other, it is returned.
+func (api *API) UnreadAlert(id string) (Alert, error) {
+	if id == "" {
+		return Alert{}, fmt.Errorf("id must be provided")
+	}
+	path := "/api/alert/" + id + "/markAsUnread"
+	req, err := api.newRequest("POST", path, nil)
+	if err != nil {
+		return Alert{}, err
+	}
+	return api.readResponseAsAlert(req)
+}
+
+// AlertToCase converts an alert to a case. The alert ID must be provided. If the alert ID is
+// empty an error is returned. If everything was ok, the returned alert is the alert converted to case.
+func (api *API) AlertToCase(id string) (Alert, error) {
+	if id == "" {
+		return Alert{}, fmt.Errorf("id must be provided")
+	}
+	path := "/api/alert/" + id + "/createCase"
+	req, err := api.newRequest("POST", path, nil)
+	if err != nil {
+		return Alert{}, err
+	}
+	return api.readResponseAsAlert(req)
+}
+
+// FollowAlert switches Follow field to true. The alert ID must be provied otherwise an error
+// is returned.
+func (api *API) FollowAlert(id string) (Alert, error) {
+	if id == "" {
+		return Alert{}, fmt.Errorf("id must be provided")
+	}
+	path := "/api/alert/" + id + "/follow"
+	req, err := api.newRequest("POST", path, nil)
+	if err != nil {
+		return Alert{}, err
+	}
+	return api.readResponseAsAlert(req)
+}
+
+// UnfollowAlert switches Follow field to false. The alert ID must be provied otherwise an error
+// is returned.
+func (api *API) UnfollowAlert(id string) (Alert, error) {
+	if id == "" {
+		return Alert{}, fmt.Errorf("id must be provided")
+	}
+	path := "/api/alert/" + id + "/unfollow"
+	req, err := api.newRequest("POST", path, nil)
+	if err != nil {
+		return Alert{}, err
+	}
+	return api.readResponseAsAlert(req)
+}
+
+// SearchAlert searches alerts based on the query
+func (api *API) SearchAlert(query *Query) ([]Alert, error) {
+
+	path := "/api/alert/_search"
+	req, err := api.newRequest("POST", path, query)
+	if err != nil {
+		return []Alert{}, err
+	}
+	return api.readResponseAsAlerts(req)
+}
+
+// MergeAlertIntoCase merges data from an alrt into case
+func (api *API) MergeAlertIntoCase(alertID, caseID string) (Case, error) {
+	if alertID == "" {
+		return Case{}, fmt.Errorf("alert id could not be empty")
+	}
+	if caseID == "" {
+		return Case{}, fmt.Errorf("case id could not be empty")
+	}
+	path := "/api/alert/" + alertID + "/merge/" + caseID
+	req, err := api.newRequest("POST", path, nil)
+	if err != nil {
+		return Case{}, err
+	}
+	return api.readResponseAsCase(req)
 }
